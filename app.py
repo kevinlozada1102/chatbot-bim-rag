@@ -891,27 +891,30 @@ def handle_end_session(data):
 # ============== MAIN ==============
 
 if __name__ == '__main__':
+    # Leer puerto de variable de entorno o usar 5001 por defecto
+    port = int(os.getenv('APP_PORT', 5001))
+
     print("🚀 Iniciando Chatbot BIM RAG - Backend API...")
-    print(f"📡 API Base URL: http://localhost:5001")
-    print(f"🩺 Health check: http://localhost:5001/api/health")
-    print(f"📊 Stats API: http://localhost:5001/api/stats")
-    print(f"💬 Chat API: POST http://localhost:5001/api/chat")
+    print(f"📡 API Base URL: http://localhost:{port}")
+    print(f"🩺 Health check: http://localhost:{port}/api/health")
+    print(f"📊 Stats API: http://localhost:{port}/api/stats")
+    print(f"💬 Chat API: POST http://localhost:{port}/api/chat")
     print("=" * 60)
-    
+
     # Verificar configuración crítica
     if not os.getenv('OPENAI_API_KEY'):
         print("❌ ADVERTENCIA: OPENAI_API_KEY no configurada")
-    
+
     if not os.getenv('DATABASE_URL'):
         print("❌ ADVERTENCIA: DATABASE_URL no configurada")
-    
-    # Iniciar servidor SocketIO en puerto 5001
+
+    # Iniciar servidor SocketIO
     try:
         socketio.run(
             app,
             debug=os.getenv('FLASK_DEBUG', 'True').lower() == 'true',
             host='0.0.0.0',
-            port=5001,  # Puerto 5001 como solicitaste
+            port=port,
             allow_unsafe_werkzeug=True  # Permitir Werkzeug en desarrollo
         )
     except KeyboardInterrupt:
