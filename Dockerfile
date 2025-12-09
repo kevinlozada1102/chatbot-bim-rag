@@ -31,7 +31,7 @@ COPY . .
 RUN mkdir -p /app/cache/files /app/cache/vector_store
 
 # Exponer el puerto
-EXPOSE 5002
+EXPOSE 5001
 
 # Comando para ejecutar la aplicación
 CMD ["python", "app.py"]

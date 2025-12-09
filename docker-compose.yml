@@ -10,7 +10,7 @@ services:
     container_name: chatbot-bim-app
     restart: unless-stopped
     ports:
-      - "${APP_PORT:-5002}:5002"
+      - "${APP_PORT:-5001}:5001"
     environment:
       # Database - Externa (usa DATABASE_URL del .env)
       DATABASE_URL: ${DATABASE_URL}
@@ -22,7 +22,7 @@ services:
       FLASK_ENV: ${FLASK_ENV:-production}
       FLASK_DEBUG: ${FLASK_DEBUG:-False}
       SECRET_KEY: ${SECRET_KEY:-chatbot-bim-secret-key-2024}
-      APP_PORT: 5002
+      APP_PORT: 5001
 
       # Cache paths
       VECTOR_STORE_PATH: /app/cache/vector_store
@@ -33,7 +33,7 @@ services:
     networks:
       - chatbot-network
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:5002/api/health"]
+      test: ["CMD", "curl", "-f", "http://localhost:5001/api/health"]
       interval: 30s
       timeout: 10s
       retries: 3
