@@ -47,3 +47,8 @@ logs/
 
 # Docker volumes
 postgres_data/
+
+# Archivos de credenciales
+credencial.txt
+credentials.txt
+*.credentials
