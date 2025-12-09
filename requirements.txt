@@ -1,0 +1,39 @@
+# Web Framework
+flask==3.1.2
+flask-socketio==5.3.6
+python-socketio==5.11.0
+flask-cors==4.0.0
+
+# LangChain y RAG
+langchain==0.2.16
+langchain-openai==0.1.25
+langchain-core==0.2.40
+langchain-community==0.2.16
+langchain-text-splitters==0.2.4
+langchain-chroma>=0.1.2
+
+# OpenAI
+openai>=1.40.0
+
+# Base de datos
+sqlalchemy==2.0.36
+psycopg2-binary==2.9.9
+
+# Vectorización y cache
+chromadb>=0.4.15
+sentence-transformers>=2.2.2
+tiktoken>=0.7.0
+
+# Procesamiento de documentos
+pypdf>=3.0.1
+beautifulsoup4==4.12.2
+lxml>=4.9.3
+html2text>=2020.1.16
+
+# HTTP y asyncio
+requests==2.32.3
+aiohttp>=3.8.6
+aiofiles>=23.2.0
+
+# Utilidades
+python-dotenv==1.0.1
