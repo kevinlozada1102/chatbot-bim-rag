@@ -1,13 +1,3 @@
-# Cache y archivos descargados
-cache/
-*.cache
-
-# Virtual Environment
-venv/
-ENV/
-env/
-.venv
-
 # Python
 __pycache__/
 *.py[cod]
@@ -17,6 +7,16 @@ __pycache__/
 *.egg-info/
 dist/
 build/
+
+# Virtual Environment
+venv/
+ENV/
+env/
+.venv
+
+# Cache y datos
+cache/
+*.cache
 
 # Environment variables
 .env
@@ -42,8 +42,24 @@ logs/
 *.sqlite
 *.sqlite3
 
+# Git
+.git/
+.gitignore
+
+# Docker
+Dockerfile
+docker-compose.yml
+.dockerignore
+
+# Documentation
+*.md
+!README.md
+
+# Tests
+tests/
+test_*.py
+*_test.py
+
 # Jupyter
 .ipynb_checkpoints
-
-# Docker volumes
-postgres_data/
+*.ipynb

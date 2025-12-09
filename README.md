@@ -31,7 +31,29 @@ Sistema de chatbot con arquitectura RAG (Retrieval-Augmented Generation) especia
 
 ## Configuración
 
-### Variables de Entorno
+### Opción 1: Docker (Recomendado)
+
+La forma más rápida de desplegar el proyecto:
+
+```bash
+# 1. Copiar y configurar variables de entorno
+cp .env.example .env
+# Editar .env con tu OPENAI_API_KEY
+
+# 2. Iniciar con script automático
+./docker-init.sh
+
+# O manualmente
+docker-compose up -d
+```
+
+**Servidor**: http://localhost:5001
+
+📚 **Documentación completa de Docker**: Ver [DOCKER.md](./DOCKER.md)
+
+### Opción 2: Instalación Local
+
+#### Variables de Entorno
 ```bash
 # OpenAI
 OPENAI_API_KEY=sk-...
@@ -44,9 +66,16 @@ SECRET_KEY=chatbot-bim-secret-key-2024
 FLASK_DEBUG=True
 ```
 
-### Instalación
+#### Instalación
 ```bash
+# Crear entorno virtual
+python3 -m venv venv
+source venv/bin/activate  # En Windows: venv\Scripts\activate
+
+# Instalar dependencias
 pip install -r requirements.txt
+
+# Ejecutar aplicación
 python app.py
 ```
 
