@@ -10,15 +10,17 @@ load_dotenv()
 # Base para modelos
 Base = declarative_base()
 
-# Leer configuración de BD del .env
-DB_HOST = os.getenv('DB_HOST')
-DB_PORT = os.getenv('DB_PORT')
-DB_USER = os.getenv('DB_USER')
-DB_PASSWORD = os.getenv('DB_PASSWORD')
-DB_NAME = os.getenv('DB_NAME')
+# Obtener DATABASE_URL directamente o construirla desde componentes
+DATABASE_URL = os.getenv('DATABASE_URL')
 
-# Construir URL de conexión
-DATABASE_URL = f"postgresql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
+# Si no existe DATABASE_URL completa, construirla desde componentes individuales
+if not DATABASE_URL:
+    DB_HOST = os.getenv('DB_HOST')
+    DB_PORT = os.getenv('DB_PORT')
+    DB_USER = os.getenv('DB_USER')
+    DB_PASSWORD = os.getenv('DB_PASSWORD')
+    DB_NAME = os.getenv('DB_NAME')
+    DATABASE_URL = f"postgresql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
 
 # Crear engine
 engine = create_engine(
