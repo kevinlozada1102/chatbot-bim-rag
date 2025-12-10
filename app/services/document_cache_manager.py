@@ -15,6 +15,8 @@ from langchain_openai import OpenAIEmbeddings
 import requests
 import html2text
 from bs4 import BeautifulSoup
+import chromadb
+from chromadb.config import Settings
 
 from app.services.document_downloader import SmartDownloader
 from app.models.informacion_gez import TblInformacionGez
@@ -57,8 +59,18 @@ class DocumentCacheManager:
         """Lazy loading del vector store"""
         if self._vector_store is None:
             Path(self.vector_store_path).mkdir(parents=True, exist_ok=True)
+
+            # Configurar cliente ChromaDB con settings explícitos
+            chroma_client = chromadb.PersistentClient(
+                path=self.vector_store_path,
+                settings=Settings(
+                    anonymized_telemetry=False,
+                    allow_reset=True
+                )
+            )
+
             self._vector_store = Chroma(
-                persist_directory=self.vector_store_path,
+                client=chroma_client,
                 embedding_function=self.embeddings
             )
         return self._vector_store
