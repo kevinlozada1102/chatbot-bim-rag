@@ -256,6 +256,8 @@ class DocumentCacheManager:
     async def _scrape_web_content(self, url: str) -> Optional[str]:
         """Extrae contenido limpio de página web con técnicas anti-bot"""
         try:
+            logger.info(f"🌐 Starting web scraping for URL: {url}")
+
             # Headers completos para simular navegador real
             headers = {
                 'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
@@ -272,31 +274,48 @@ class DocumentCacheManager:
                 'DNT': '1',
                 'Referer': 'https://www.google.com/'
             }
-            
+
             # Pequeño delay para no parecer bot
             import random
             await asyncio.sleep(random.uniform(1.0, 3.0))
-            
+
             # Usar session con cookies y redirects
             session = requests.Session()
             session.headers.update(headers)
-            
+
             response = session.get(url, timeout=30, allow_redirects=True)
             response.raise_for_status()
-            
+
+            logger.info(f"   HTTP Status: {response.status_code}")
+            logger.info(f"   Content-Type: {response.headers.get('Content-Type', 'Unknown')}")
+            logger.info(f"   Content-Length: {len(response.content)} bytes")
+
             # Parsear HTML
             soup = BeautifulSoup(response.content, 'html.parser')
-            
+
+            # Buscar enlaces a PDF embebidos
+            pdf_links = []
+            for link in soup.find_all(['a', 'iframe', 'embed', 'object']):
+                href = link.get('href') or link.get('src') or link.get('data')
+                if href and '.pdf' in href.lower():
+                    pdf_links.append(href)
+
+            if pdf_links:
+                logger.warning(f"⚠️ FOUND {len(pdf_links)} EMBEDDED PDF LINKS in page:")
+                for pdf_link in pdf_links:
+                    logger.warning(f"   - {pdf_link}")
+                logger.warning(f"   Consider using the direct PDF URL instead of the web page")
+
             # Remover scripts y estilos
             for script in soup(["script", "style"]):
                 script.decompose()
-            
+
             # Convertir a texto limpio
             h = html2text.HTML2Text()
             h.ignore_links = True
             h.ignore_images = True
             text = h.handle(str(soup))
-            
+
             # Limpiar texto
             lines = text.split('\n')
             cleaned_lines = []
@@ -304,8 +323,15 @@ class DocumentCacheManager:
                 line = line.strip()
                 if line and not line.startswith('#'):  # Evitar headers de markdown vacíos
                     cleaned_lines.append(line)
-            
-            return '\n'.join(cleaned_lines)
+
+            cleaned_text = '\n'.join(cleaned_lines)
+            logger.info(f"   ✅ Scraped {len(cleaned_text)} characters from web page")
+            logger.info(f"   Preview: '{cleaned_text[:200]}...'")
+
+            if len(cleaned_text) < 100:
+                logger.error(f"   ❌ WARNING: Very short content extracted ({len(cleaned_text)} chars). Page might be protected or have embedded PDF.")
+
+            return cleaned_text
             
         except Exception as e:
             logger.error(f"Error scraping {url}: {e}")
