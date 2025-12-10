@@ -90,18 +90,31 @@ class DocumentCacheManager:
             # Marcar como procesando
             record.cache_status = 'processing'
             db_session.commit()
-            
+
             logger.info(f"Processing document {record.id}: {record.titulo}")
-            
+
+            # Convertir URLs de Google Drive a formato de descarga directa
+            if record.link and 'drive.google.com' in record.link:
+                original_url = record.link
+                record.link = self._convert_google_drive_url(record.link)
+                if record.link != original_url:
+                    logger.info(f"🔄 Converted Google Drive URL:")
+                    logger.info(f"   From: {original_url}")
+                    logger.info(f"   To: {record.link}")
+
             # Detectar tipo real basado en URL
-            is_pdf_url = record.link and record.link.lower().endswith('.pdf')
-            
+            is_pdf_url = record.link and (
+                record.link.lower().endswith('.pdf') or
+                'drive.google.com/uc' in record.link  # Google Drive download links
+            )
+
             # Procesar según tipo real
             if record.tipo == 'pdf' and is_pdf_url:
                 chunks = await self._process_pdf_document(record)
             elif record.tipo == 'pdf' and not is_pdf_url:
                 # PDF listado como PDF pero URL no es PDF directo, tratar como web
-                logger.info(f"Document {record.id} marked as PDF but URL is web page, processing as web")
+                logger.warning(f"⚠️ Document {record.id} marked as PDF but URL is web page, processing as web")
+                logger.warning(f"   Consider updating to direct PDF URL")
                 chunks = await self._process_web_document(record)
             elif record.tipo == 'web':
                 chunks = await self._process_web_document(record)
@@ -183,13 +196,43 @@ class DocumentCacheManager:
             
             logger.info(f"Successfully processed document {record.id} with {len(chunks)} chunks")
             return True
-            
+
         except Exception as e:
             logger.error(f"Error processing document {record.id}: {e}")
             record.cache_status = 'error'
             db_session.commit()
             return False
-    
+
+    def _convert_google_drive_url(self, url: str) -> str:
+        """
+        Convierte URLs de Google Drive al formato de descarga directa
+
+        Formatos soportados:
+        - https://drive.google.com/file/d/FILE_ID/view → https://drive.google.com/uc?id=FILE_ID
+        - https://drive.google.com/open?id=FILE_ID → https://drive.google.com/uc?id=FILE_ID
+        """
+        import re
+
+        # Patrón 1: /file/d/FILE_ID/view
+        match = re.search(r'/file/d/([a-zA-Z0-9_-]+)', url)
+        if match:
+            file_id = match.group(1)
+            return f'https://drive.google.com/uc?export=download&id={file_id}'
+
+        # Patrón 2: open?id=FILE_ID
+        match = re.search(r'[?&]id=([a-zA-Z0-9_-]+)', url)
+        if match:
+            file_id = match.group(1)
+            return f'https://drive.google.com/uc?export=download&id={file_id}'
+
+        # Si ya está en formato de descarga, dejar como está
+        if '/uc?' in url or '/uc=' in url:
+            return url
+
+        # Si no coincide con ningún patrón, devolver URL original
+        logger.warning(f"Could not convert Google Drive URL: {url}")
+        return url
+
     async def _process_pdf_document(self, record: TblInformacionGez) -> List[Document]:
         """Procesa documento PDF"""
         try:
