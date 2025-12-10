@@ -422,28 +422,40 @@ class DocumentCacheManager:
     def search_similar_chunks(self, query: str, k: int = 8, filter_metadata: dict = None) -> List[Document]:
         """
         Busca chunks similares usando el vector store
-        
+
         Args:
             query: Consulta de búsqueda
             k: Número de resultados
             filter_metadata: Filtros adicionales
-            
+
         Returns:
             Lista de documentos similares
         """
         try:
+            logger.info(f"🔍 VECTOR STORE SEARCH - Query: '{query[:80]}...' | Requesting k={k} chunks | Filters: {filter_metadata}")
+
             if filter_metadata:
                 results = self.vector_store.similarity_search(
                     query, k=k, filter=filter_metadata
                 )
             else:
                 results = self.vector_store.similarity_search(query, k=k)
-            
-            logger.info(f"Found {len(results)} similar chunks for query: {query[:50]}...")
+
+            logger.info(f"✅ VECTOR STORE RESULTS - Found {len(results)} chunks")
+
+            # Log detallado de cada chunk encontrado
+            for i, chunk in enumerate(results, 1):
+                source_id = chunk.metadata.get('source_id', 'Unknown')
+                titulo = chunk.metadata.get('titulo', 'Sin título')
+                tipo = chunk.metadata.get('source_type', 'Unknown')
+                preview = chunk.page_content[:100].replace('\n', ' ')
+
+                logger.info(f"  📄 Chunk {i}/{len(results)} - Doc ID: {source_id} | Type: {tipo} | Title: '{titulo}' | Preview: '{preview}...'")
+
             return results
-            
+
         except Exception as e:
-            logger.error(f"Error in similarity search: {e}")
+            logger.error(f"❌ ERROR in similarity search: {e}")
             return []
     
     async def _process_text_content(self, record: TblInformacionGez) -> List[Document]:

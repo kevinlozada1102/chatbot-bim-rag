@@ -85,10 +85,10 @@ Respuesta:"""
             Diccionario con respuesta y metadatos
         """
         try:
-            logger.info(f"Processing query: {user_query[:100]}...")
-            
+            logger.info(f"📥 NEW USER QUERY - Query: '{user_query[:100]}...' | Session: {session_id}")
+
             # 1. PRIMERO: Buscar directamente en vector store (más preciso)
-            logger.info("Searching in vector store for relevant chunks...")
+            logger.info("🔎 STEP 1: Searching in vector store for relevant chunks...")
             relevant_chunks = self.document_manager.search_similar_chunks(
                 user_query, k=8  # Más chunks para mejor contexto
             )
@@ -99,35 +99,43 @@ Respuesta:"""
             # 2. Si hay chunks del vector store, extraer los documentos fuente
             relevant_records = []
             if relevant_chunks:
+                logger.info(f"📚 STEP 2: Extracting source documents from {len(relevant_chunks)} chunks...")
+
                 # Obtener IDs únicos de documentos fuente
                 source_ids = list(set(
-                    chunk.metadata.get('source_id') 
-                    for chunk in relevant_chunks 
+                    chunk.metadata.get('source_id')
+                    for chunk in relevant_chunks
                     if chunk.metadata.get('source_id')
                 ))
-                
+
+                logger.info(f"   Found {len(source_ids)} unique source document IDs: {source_ids}")
+
                 # Obtener información de los documentos fuente
                 for source_id in source_ids:
                     record = repo.find_by_id(source_id)
                     if record:
                         relevant_records.append(record)
+                        logger.info(f"   ✅ Loaded source doc ID {source_id}: '{record.titulo}' (Type: {record.tipo}, Link: {record.link})")
             
             # 3. Si no hay chunks en vector store, buscar en BD como fallback
             if not relevant_chunks:
-                logger.info("No vector store results, falling back to database search...")
+                logger.warning("⚠️ STEP 3: No vector store results found! Falling back to database search...")
                 relevant_records = repo.search_by_content(user_query, limit=5)
-                
+
                 if not relevant_records:
+                    logger.warning("   ⚠️ No content match in DB, using cached documents as last resort...")
                     relevant_records = repo.find_cached_documents()[:3]
-                
+                    logger.info(f"   Using {len(relevant_records)} cached documents as fallback")
+
                 # Procesar documentos si es necesario
                 await self._ensure_documents_processed(relevant_records, db_session)
-                
+
                 # Buscar chunks después del procesamiento
                 for record in relevant_records:
                     if record.cache_status == 'cached' and record.vector_store_id:
+                        logger.info(f"   Searching chunks from fallback doc ID {record.id}: '{record.titulo}'")
                         chunks = self.document_manager.search_similar_chunks(
-                            user_query, k=3, 
+                            user_query, k=3,
                             filter_metadata={"source_id": record.id}
                         )
                         relevant_chunks.extend(chunks)
@@ -141,7 +149,9 @@ Respuesta:"""
                 # PRIORIZAR chunks del vector store (más relevantes)
                 context = "\n\n".join([chunk.page_content for chunk in relevant_chunks[:8]])
                 sources = self._extract_sources_from_chunks(relevant_chunks)
-                logger.info(f"Using {len(relevant_chunks)} vector store chunks for context")
+                logger.info(f"📝 STEP 4: Building context from {len(relevant_chunks)} VECTOR STORE chunks (best quality)")
+                logger.info(f"   Context length: {len(context)} characters")
+                logger.info(f"   Sources identified: {[s.get('titulo', 'Unknown') for s in sources]}")
             else:
                 # Fallback: usar contenido básico de BD
                 context = "\n\n".join([
@@ -150,21 +160,41 @@ Respuesta:"""
                     if record.contenido_procesado
                 ])
                 sources = [{"titulo": r.titulo, "link": r.link, "tipo": r.tipo} for r in relevant_records]
-                logger.info(f"Using {len(relevant_records)} database records for context")
-            
+                logger.warning(f"⚠️ STEP 4: Building context from {len(relevant_records)} DATABASE RECORDS (fallback mode)")
+                logger.info(f"   Context length: {len(context)} characters")
+
             # 4. Generar respuesta con LLM
+            logger.info("🤖 STEP 5: Generating response with OpenAI GPT-4...")
+            logger.info(f"   Using model: gpt-4 | Temperature: 0.3 | Max tokens: 1000")
+            logger.info(f"   Context preview: '{context[:200]}...'")
+
             prompt = self.prompt_template.format(
                 context=context,
                 question=user_query
             )
-            
+
             response = await self._generate_response(prompt)
+
+            logger.info(f"✅ RESPONSE GENERATED - Length: {len(response)} characters")
+            logger.info(f"   Response preview: '{response[:150]}...'")
+            logger.info(f"   📊 SUMMARY - Used {len(sources)} sources from {'VECTOR STORE' if relevant_chunks else 'DATABASE FALLBACK'}")
             
             # Resetear intentos fallidos ya que se comprendió el mensaje
             self._reset_failed_attempts(session_id)
-            
+
             db_session.close()
-            
+
+            # Log final con resumen completo
+            logger.info("=" * 80)
+            logger.info("📊 FINAL ANSWER SUMMARY")
+            logger.info(f"   Source type: {'VECTOR STORE (Cached Documents)' if relevant_chunks else 'DATABASE (Fallback)'}")
+            logger.info(f"   Total chunks used: {len(relevant_chunks)}")
+            logger.info(f"   Total source documents: {len(relevant_records)}")
+            logger.info(f"   Document titles: {[r.titulo for r in relevant_records]}")
+            logger.info(f"   Confidence level: {'HIGH' if relevant_chunks else 'MEDIUM'}")
+            logger.info(f"   Response sent to user (first 200 chars): '{response[:200]}...'")
+            logger.info("=" * 80)
+
             return {
                 "answer": response,
                 "sources": sources,
