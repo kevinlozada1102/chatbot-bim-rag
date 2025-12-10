@@ -12,7 +12,7 @@ Sistema de chatbot con arquitectura RAG (Retrieval-Augmented Generation) especia
 - 🇵🇪 **Especialización**: Implementación BIM en el Estado peruano
 - 😄 **Personalidad**: Gracioso y coloquial, pero profesional
 - 💬 **Estilo**: Respuestas breves y directas
-- 🌍 **Referencia**: Siempre incluye https://mef.gob.pe/planbimperu para más información
+- 🌍 **Referencia**: Siempre incluye el link específico del documento fuente para más información
 - 📩 **Contacto alternativo**: planbimperu@mef.gob.pe
 
 **Comportamientos especiales:**

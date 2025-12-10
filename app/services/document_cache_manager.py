@@ -143,13 +143,14 @@ class DocumentCacheManager:
                     "source_type": record.tipo or "unknown",
                     "titulo": record.titulo or "Sin título",
                     "categoria": record.categoria or "general",
-                    "vector_store_id": vector_store_id
+                    "vector_store_id": vector_store_id,
+                    "link": record.link or ""
                 }
-                
+
                 # Solo agregar tags si no es None
                 if record.tags:
                     metadata["tags"] = str(record.tags)
-                
+
                 chunk.metadata.update(metadata)
             
             # Agregar al vector store en lotes para evitar límite de tokens

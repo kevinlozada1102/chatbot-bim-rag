@@ -38,11 +38,14 @@ class ChatbotRAGSystem:
         
         # Template para respuestas
         self.prompt_template = PromptTemplate(
-            input_variables=["context", "question"],
+            input_variables=["context", "question", "sources_info"],
             template="""Eres ABI (Asistente BIM), el asistente BIM para orientación sobre la implementación de BIM en el Estado peruano.
 
 Contexto relevante:
 {context}
+
+Fuentes disponibles:
+{sources_info}
 
 Pregunta del usuario: {question}
 
@@ -51,7 +54,8 @@ Instrucciones de personalidad:
 - Puedo ser gracioso y dar respuestas coloquiales
 - Usar emojis al inicio o final de la respuesta, pero no en todos los párrafos
 - Mantener respuestas breves y directas
-- Siempre incluir el link https://mef.gob.pe/planbimperu para mayor información sobre el tema consultado
+- IMPORTANTE: Al final de tu respuesta, incluir un link específico del documento fuente donde se puede encontrar más información. Usa el link de las fuentes proporcionadas arriba
+- Si hay múltiples fuentes, menciona el link del documento más relevante a la pregunta
 - NO terminar con punto (.) la última oración. Si tiene varios párrafos, usar punto seguido/aparte en todos excepto el último
 - Al finalizar respuesta sobre trámites, preguntar: "¿Te puedo ayudar en otra consulta?"
 - Responder basándose únicamente en el contexto proporcionado
@@ -168,9 +172,16 @@ Respuesta:"""
             logger.info(f"   Using model: gpt-4 | Temperature: 0.3 | Max tokens: 1000")
             logger.info(f"   Context preview: '{context[:200]}...'")
 
+            # Formatear información de fuentes para el prompt
+            sources_info = "\n".join([
+                f"- {s.get('titulo', 'Sin título')}: {s.get('link', 'Sin link')}"
+                for s in sources
+            ])
+
             prompt = self.prompt_template.format(
                 context=context,
-                question=user_query
+                question=user_query,
+                sources_info=sources_info
             )
 
             response = await self._generate_response(prompt)
@@ -280,19 +291,20 @@ Respuesta:"""
         """Extrae información de fuentes desde chunks"""
         sources_seen = set()
         sources = []
-        
+
         for chunk in chunks:
             metadata = chunk.metadata
             source_key = f"{metadata.get('titulo', '')}_{metadata.get('source_id', '')}"
-            
+
             if source_key not in sources_seen:
                 sources_seen.add(source_key)
                 sources.append({
                     "titulo": metadata.get('titulo', 'Sin título'),
                     "tipo": metadata.get('source_type', 'Desconocido'),
-                    "categoria": metadata.get('categoria', '')
+                    "categoria": metadata.get('categoria', ''),
+                    "link": metadata.get('link', '')
                 })
-        
+
         return sources
     
     async def process_single_document_by_id(self, document_id: int) -> Dict[str, Any]:
