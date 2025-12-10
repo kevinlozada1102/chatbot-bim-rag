@@ -27,12 +27,23 @@ class SmartDownloader:
     
     def _get_extension_from_url(self, url: str) -> str:
         """Extrae extensión del archivo desde URL"""
+        # Casos especiales: Google Drive
+        if 'drive.google.com/uc' in url or 'drive.google.com/file' in url:
+            # URLs de Google Drive son PDFs si fueron convertidas
+            return '.pdf'
+
+        # Detección estándar por extensión en la URL
         if url.lower().endswith('.pdf'):
             return '.pdf'
         elif any(url.lower().endswith(ext) for ext in ['.html', '.htm']):
             return '.html'
+        elif url.lower().endswith('.docx'):
+            return '.docx'
+        elif url.lower().endswith('.doc'):
+            return '.doc'
         else:
-            return '.txt'
+            # Default para URLs sin extensión clara
+            return '.pdf'  # Asumir PDF por defecto en lugar de .txt
     
     def _is_fresh(self, file_path: Path) -> bool:
         """Verifica si el archivo cacheado es reciente"""
@@ -83,7 +94,7 @@ class SmartDownloader:
         """Descarga archivo desde URL con técnicas anti-bot bypass"""
         try:
             timeout = aiohttp.ClientTimeout(total=60)  # 60 segundos timeout
-            
+
             # Headers para simular navegador real
             headers = {
                 'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
@@ -99,18 +110,36 @@ class SmartDownloader:
                 'Cache-Control': 'max-age=0',
                 'DNT': '1'
             }
-            
+
             connector = aiohttp.TCPConnector(ssl=False, limit=10)
             async with aiohttp.ClientSession(timeout=timeout, headers=headers, connector=connector) as session:
                 async with session.get(url, ssl=False) as response:
                     if response.status == 200:
-                        async with aiofiles.open(destination, 'wb') as f:
+                        # Detectar tipo real del archivo desde Content-Type
+                        content_type = response.headers.get('Content-Type', '').lower()
+                        logger.info(f"📦 Downloading file - Content-Type: {content_type}")
+
+                        # Determinar extensión correcta basada en Content-Type
+                        correct_extension = None
+                        if 'application/pdf' in content_type:
+                            correct_extension = '.pdf'
+                        elif 'application/msword' in content_type or 'application/vnd.openxmlformats-officedocument.wordprocessingml' in content_type:
+                            correct_extension = '.docx' if 'openxmlformats' in content_type else '.doc'
+
+                        # Si la extensión detectada difiere, renombrar
+                        final_destination = destination
+                        if correct_extension and not str(destination).endswith(correct_extension):
+                            final_destination = destination.with_suffix(correct_extension)
+                            logger.info(f"🔄 Correcting file extension from {destination.suffix} to {correct_extension}")
+
+                        async with aiofiles.open(final_destination, 'wb') as f:
                             async for chunk in response.content.iter_chunked(8192):
                                 await f.write(chunk)
-                        logger.info(f"Successfully downloaded {url} to {destination}")
+
+                        logger.info(f"✅ Successfully downloaded {url} to {final_destination}")
                         return True
                     else:
-                        logger.error(f"Failed to download {url}, status: {response.status}")
+                        logger.error(f"❌ Failed to download {url}, status: {response.status}")
                         return False
                         
         except asyncio.TimeoutError:
